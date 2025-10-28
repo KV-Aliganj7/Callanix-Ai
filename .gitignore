@@ -1,0 +1,6 @@
+# Environment variables file should never be committed
+.env
+
+# Python cache files
+__pycache__/
+*.pyc

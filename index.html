@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Callanix — AI for KVS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="description" content="Callanix: AI Assistant for KVS" />
+  <style>
+    :root { --bg: #f5f7fb; --panel: #ffffff; --text: #2d3748; --muted: #4a5568; --brand1: #667eea; --brand2: #764ba2; --border: #e2e8f0; --shadow: 0 6px 24px rgba(0, 0, 0, 0.08); }
+    html, body { margin: 0; padding: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); height: 100%; }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    .app-header { background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: #fff; padding: 16px 24px; box-shadow: var(--shadow); position: sticky; top: 0; z-index: 10; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { width: 42px; height: 42px; border-radius: 10px; background: rgba(255,255,255,0.15); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; border: 2px solid rgba(255,255,255,0.25); }
+    .brand h1 { font-size: 20px; margin: 0; font-weight: 700; }
+    .brand small { display: block; opacity: 0.9; font-weight: 500; font-size: 13px; }
+    .app-main { flex: 1 1 auto; max-width: 900px; margin: 16px auto; width: 95%; display: grid; grid-template-rows: 1fr auto; gap: 12px; }
+    .chat-panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); display: flex; flex-direction: column; overflow: hidden; min-height: 65vh; }
+    .messages { flex: 1 1 auto; overflow-y: auto; padding: 24px; scroll-behavior: smooth; }
+    .msg { display: flex; gap: 12px; margin-bottom: 20px; }
+    .msg .bubble { padding: 12px 16px; border-radius: 14px; max-width: 100%; width: fit-content; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .msg.user { justify-content: flex-end; }
+    .msg.user .bubble { background: linear-gradient(135deg, #eef2ff, #f0eaff); border-color: #d6d9ff; }
+    .msg.ai .bubble { background: #fff; border-color: var(--border); }
+    .meta { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+    .meta .model-name { font-weight: 600; }
+    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+    .composer input[type="text"] { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--border); outline: none; font-size: 16px; }
+    .composer button { padding: 12px 18px; border: none; border-radius: 10px; background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: #fff; font-weight: 700; cursor: pointer; transition: transform 0.1s ease; }
+    .composer button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .typing { display: none; align-items: center; gap: 10px; padding: 10px 24px; color: var(--muted); }
+    .typing .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand1); animation: blink 1.4s infinite ease-in-out; }
+    .typing .dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+    .message-content { line-height: 1.8; font-size: 17px; word-wrap: break-word; }
+    .message-content > *:first-child { margin-top: 0; }
+    .message-content > *:last-child { margin-bottom: 0; }
+    .message-content h1, .message-content h2, .message-content h3 { font-weight: 700; color: #1a202c; line-height: 1.4; margin-top: 28px; margin-bottom: 16px; }
+    .message-content h1 { font-size: 24px; border-bottom: 2px solid var(--brand1); padding-bottom: 10px; }
+    .message-content h2 { font-size: 20px; }
+    .message-content p { margin: 0 0 18px 0; }
+    .message-content strong, .message-content b { font-weight: 700; color: #1a202c; }
+    .message-content em, .message-content i { font-style: italic; }
+    .message-content ul, .message-content ol { margin: 18px 0; padding-left: 28px; }
+    .message-content li { margin-bottom: 12px; padding-left: 8px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-logo">KVS</div>
+        <div><h1>Callanix</h1><small>AI Assistant</small></div>
+      </div>
+    </header>
+    <main class="app-main">
+      <section class="chat-panel">
+        <div class="messages" id="messages"></div>
+        <div class="typing" id="typingIndicator">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span id="typingText">Thinking...</span>
+        </div>
+      </section>
+      <section>
+        <div class="composer">
+          <input id="userInput" type="text" placeholder="Ask about homework, e.g., 'explain Newton's laws'..." />
+          <button id="sendBtn">Send</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const SYSTEM_PROMPT = `You are Callanix, a helpful AI assistant for students. Provide clear, easy-to-read answers formatted in clean HTML using tags like <h1>, <h2>, <p>, <strong>, <ul>, and <li>. Do not use Markdown.`;
+    const NCERT_SERVER_URL = '/api/ask-ncert';
+    const GENERAL_SERVER_URL = '/api/ask-general';
+    const NCERT_KEYWORDS = ['ncert', 'chapter', 'science', 'math', 'physics', 'chemistry', 'biology', 'history', 'explain', 'what is', 'define', 'class 9', 'class 10'];
+
+    function isNcertQuery(query) {
+        const lowerQuery = query.toLowerCase();
+        const hasClass = /class\s+(\d+|ix|x)/.test(lowerQuery);
+        const hasSubject = ['science', 'math', 'history', 'physics', 'chemistry', 'biology'].some(s => lowerQuery.includes(s));
+        return (hasClass && hasSubject) || NCERT_KEYWORDS.some(k => lowerQuery.includes(k));
+    }
+
+    async function callBackend(url, payload) {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({ error: 'The AI model is not responding or returned an invalid format.' }));
+                return { ok: false, message: errData.error };
+            }
+            const data = await response.json();
+            return { ok: true, ...data };
+        } catch (error) {
+            console.error('API connection error:', error);
+            return { ok: false, message: 'Could not connect to the backend server function.' };
+        }
+    }
+
+    const conversationHistory = [];
+    async function sendMessage() {
+        const input = document.getElementById('userInput');
+        const message = input.value.trim();
+        if (!message) return;
+        
+        input.value = ''; input.disabled = true; document.getElementById('sendBtn').disabled = true;
+        
+        displayMessage(message, 'user');
+        conversationHistory.push({ role: 'user', content: message });
+        
+        showTypingIndicator();
+        let result;
+
+        if (isNcertQuery(message)) {
+            updateTypingIndicator('Accessing NCERT knowledge base...');
+            result = await callBackend(NCERT_SERVER_URL, { query: message });
+        } else {
+            updateTypingIndicator('Contacting general AI model...');
+            const apiMessages = [{ role: 'system', content: SYSTEM_PROMPT }, ...conversationHistory];
+            result = await callBackend(GENERAL_SERVER_URL, { messages: apiMessages });
+        }
+        
+        hideTypingIndicator();
+        
+        if (result && result.ok) {
+            conversationHistory.push({ role: 'assistant', content: result.reply });
+            displayMessage(result.reply, 'ai', result.modelName);
+        } else {
+            const errorMessage = result ? result.message : "An unknown error occurred.";
+            displayMessage(`<p><strong>Error:</strong> ${errorMessage}</p>`, 'ai', 'System');
+        }
+        
+        input.disabled = false; input.disabled = false; input.focus();
+    }
+
+    function showTypingIndicator(text = 'Thinking...') { document.getElementById('typingText').textContent = text; document.getElementById('typingIndicator').style.display = 'flex'; }
+    function hideTypingIndicator() { document.getElementById('typingIndicator').style.display = 'none'; }
+    function updateTypingIndicator(text) { showTypingIndicator(text); }
+    function displayMessage(content, role, modelName = 'You') {
+        const messagesEl = document.getElementById('messages');
+        const row = document.createElement('div');
+        row.className = `msg ${role}`;
+        const cleanContent = role === 'user' ? content.replace(/</g, "&lt;").replace(/>/g, "&gt;") : content;
+        row.innerHTML = `<div class="bubble"><div class="meta">${role === 'user' ? 'You' : `Callanix <span class="model-name">(via ${modelName})</span>`}</div><div class="message-content">${cleanContent}</div></div>`;
+        messagesEl.appendChild(row);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        displayMessage('<h2>Welcome to Callanix</h2><p>Your AI assistant is ready! Ask a general question, or a specific one from your textbook like, "explain Newton\'s laws from class 9 science".</p>', 'ai', 'System');
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        document.getElementById('userInput').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
+    });
+  </script>
+</body>
+</html>
