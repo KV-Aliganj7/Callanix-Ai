@@ -33,7 +33,7 @@ def handle_ncert_query(user_query, referer):
     final_prompt = f"--- TEXTBOOK CONTEXT ---\n{pdf_context}\n--- END OF CONTEXT ---\n\nBased strictly on the context, answer: \"{user_query}\""
     
     api_key = os.environ.get('API_KEY_NCERT')
-    model_name = os.environ.get('MODEL_NAME_NCERT', 'anthropic/claude-3-haiku')
+    model_name = os.environ.get('MODEL_NAME_NCERT', 'meta-llama/llama-3-8b-instruct:free')
     
     if not api_key:
         raise Exception("API_KEY_NCERT is not configured in the environment.")
