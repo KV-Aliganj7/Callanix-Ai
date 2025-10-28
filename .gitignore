@@ -1,6 +1,1 @@
-# .gitignore
-# Ignore environment files and generated configuration
-
-.env
 config.js
-node_modules/
