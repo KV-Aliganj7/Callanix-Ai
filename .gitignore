@@ -1,6 +1,6 @@
-# Environment variables file should never be committed
-.env
+# .gitignore
+# Ignore environment files and generated configuration
 
-# Python cache files
-__pycache__/
-*.pyc
+.env
+config.js
+node_modules/

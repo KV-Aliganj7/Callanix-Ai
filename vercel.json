@@ -1,7 +1,0 @@
-{
-  "version": 2,
-  "rewrites": [
-    { "source": "/api/ask-ncert", "destination": "/api/handler" },
-    { "source": "/api/ask-general", "destination": "/api/handler" }
-  ]
-}
